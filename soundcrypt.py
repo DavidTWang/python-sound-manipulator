@@ -1,23 +1,44 @@
 import wave
-import pyaudio
+import argparse
 
-filename = "test.wav"
-wf = wave.open(filename, 'rb')
 
-pya = pyaudio.PyAudio()
-stream = pya.open(format=pya.get_format_from_width(wf.getsampwidth()),
-                  channels=wf.getnchannels(),
-                  rate=wf.getframerate(),
-                  output=True)
+parser = argparse.ArgumentParser()
+parser.add_argument("input", help="Path to the file")
+parser.add_argument("output", help="File to save as")
+parser.add_argument("-r", "--reverse", action="store_true", help="Reverse the output")
+parser.add_argument("-s", "--speed", type=float, help="Change frame rate by n times")
+args = parser.parse_args()
 
-full_data = []
-data = wf.readframes(1024)
 
-while data:
-    full_data.append(data)
-    data = wf.readframes(1024)
+def get_frames(wf):
+    full_data = []
+    for i in range(wf.getnframes()):
+        full_data.append(wf.readframes(1))
+    return full_data
 
-data = ''.join(full_data)[::-1]
 
-for i in range(0, len(data), 1024):
-    stream.write(data[i:i+1024])
+def reverse(data):
+    return data[::-1]
+
+
+def save(wf, data):
+    wf.writeframes(''.join(data))
+
+
+def main():
+    win = wave.open(args.input, 'rb')
+    wout = wave.open(args.output, 'wb')
+    wout.setparams(win.getparams())
+
+    data = get_frames(win)
+    if(args.reverse is True):
+        data = reverse(data)
+    if(args.speed is not None):
+        wout.setframerate(wout.getframerate() * args.speed)
+    save(wout, data)
+    wout.close()
+    win.close()
+
+
+if __name__ == '__main__':
+    main()
